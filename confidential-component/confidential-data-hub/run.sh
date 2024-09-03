@@ -9,7 +9,7 @@ sudo docker build --progress=plain --no-cache --build-arg CDH_COMMIT=${CDH_COMMI
 sudo docker run -d --network host --name cdh-build1 rbi-cdh:v1
 
 # get binary CDH file from image
-sudo docker cp cdh-build1:/usr/local/bin/confidential-data-hub ./
+sudo docker cp cdh-build1:/usr/src/guest-components/target/x86_64-unknown-linux-gnu/release/confidential-data-hub ./
 
 # stop and delete container 
 sudo docker stop cdh-build1

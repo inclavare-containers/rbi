@@ -4,9 +4,9 @@ WORKDIR /usr/src
 
 # Install the build dependencies
 RUN apt-get update && \
-    apt-get install -y git=1:2.39.2-1.1  libtss2-dev=3.2.1-3 protobuf-compiler=3.21.12-3 clang=1:14.0-55.7~deb12u1
+    apt-get install -y git=1:2.39.2-1.1 libtss2-dev=3.2.1-3 protobuf-compiler=3.21.12-3 clang=1:14.0-55.7~deb12u1 
 
-# Install the SGX & TDX build dependencies 
+# Install the SGX & TDX build dependencies
 RUN curl \
       -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     tee intel-sgx-deb.key | apt-key add - && \
@@ -17,5 +17,6 @@ RUN curl \
 
 # Build the attestation-agent with all features
 RUN git clone https://github.com/confidential-containers/trustee.git \
-    && cd trustee/attestation-service \
+    && cd trustee/kbs \
     && make 
+   

@@ -27,4 +27,4 @@ First, run the script to start.
 sudo sh run.sh
 ```
 
-If  build process is successful, the binary CDH file ` confidential-data-hub` is in the current directory, then bash `./confidential-data-hub` to run it.
+If  build process is successful, the binary CDH file ` confidential-data-hub` is in the current directory, then bash `./confidential-data-hub` to run it. If you want to check the reproducibility, use `sha256sum` to get the hash value as `c71085552ba263d72286d5f35465177192a5fd5b452b11ff89307e80094f7f19`.
