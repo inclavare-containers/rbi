@@ -1,9 +1,9 @@
 #! /bin/bash
 
-# set CDH_COMMIT for git checkout
-AA_COMMIT="bf7ccd301d3f50bfcb4cc9e38ae187141ce35072"
+# set COMMIT for git checkout
+KBS_COMMIT="f6402d020248673482a4902d34c09a4fe109fe06"
 # build docker image for CDH
-sudo docker build --progress=plain --no-cache --build-arg AA_COMMIT=${AA_COMMIT} -t rbi-kbs:v1 .
+sudo docker build --progress=plain --build-arg KBS_COMMIT=${KBS_COMMIT} -t rbi-kbs:v1 .
 
 # run docker container for CDH
 sudo docker run -d --network host --name kbs-build1 rbi-kbs:v1

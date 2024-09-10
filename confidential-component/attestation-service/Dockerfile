@@ -1,5 +1,7 @@
 FROM rust:1.80.0-bookworm as builder
 
+ARG AS_COMMIT=HEAD
+
 WORKDIR /usr/src
 
 # Install the build dependencies
@@ -17,5 +19,5 @@ RUN curl \
 
 # Build the attestation-agent with all features
 RUN git clone https://github.com/confidential-containers/trustee.git \
-    && cd trustee/attestation-service \
+    && cd trustee/attestation-service && git checkout ${AS_COMMIT} \
     && make 
