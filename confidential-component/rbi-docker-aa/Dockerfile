@@ -44,7 +44,9 @@ ARG RUST_LOG=debug
 LABEL org.opencontainers.image.source="https://github.com/inclavare-containers/attestation-agent"
 
 # Install the SGX & TDX runtime dependencies
-RUN apt-get update && apt-get install -y --allow-downgrades curl=7.81.0-1ubuntu1.17 gnupg=2.2.27-3ubuntu2.1 openssl=3.0.2-0ubuntu1.18 && \
+RUN apt-get update && apt-get install -y software-properties-common
+
+RUN add-apt-repository ppa:kmix/openssl && apt-get update && apt-get install -y --allow-downgrades curl=7.81.0-1ubuntu1.17 gnupg=2.2.27-3ubuntu2.1 openssl=3.0.2-0ubuntu1.17ppa1 && \
     curl \
       -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
     tee intel-sgx-deb.key | apt-key add - && \
