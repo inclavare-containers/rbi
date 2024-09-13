@@ -16,14 +16,13 @@ This project is based on Docker for reproducible build, and currently supports r
 
 
 - Ensure Docker is installed on your system
-- - Ensure that the buildkit is downloaded and configured locally, according to section **安装buildkit**  in [use nerdctl and buildkit](https://www.cnblogs.com/punchlinux/p/16575328.html#:~:text=nerdctl). The github link is https://github.com/moby/buildkit/releases, first download the package and copy to /usr/local/bin
+- Ensure that the buildkit is downloaded and configured locally, according to section **安装buildkit**  in [use nerdctl and buildkit](https://www.cnblogs.com/punchlinux/p/16575328.html#:~:text=nerdctl). The github link is https://github.com/moby/buildkit/releases, first download the package and copy to /usr/local/bin
 
 ```bash
 root@master1:~# tar xf buildkit-v0.10.3.linux-amd64.tar.gz
 root@master1:~# cp * /usr/local/bin/
 ```
-
-  Create buildkit.socket in /lib/systemd/system/buildkit.socket and input the content below.
+Create buildkit.socket in /lib/systemd/system/buildkit.socket and input the content below.
 
 ```bash
 [Unit]
@@ -36,8 +35,7 @@ ListenStream=%t/buildkit/buildkitd.sock
 [Install]
 WantedBy=sockets.target
 ```
-
-​		Create buildkitd.service in /lib/systemd/system/buildkitd.service  and input the content below.
+Create buildkitd.service in /lib/systemd/system/buildkitd.service  and input the content below.
 
 ```bash
 [Unit]
@@ -51,16 +49,14 @@ ExecStart=/usr/local/bin/buildkitd --oci-worker=false --containerd-worker=true
 [Install]
 WantedBy=multi-user.target
 ```
-
- 		configure buildkitd: create folder /etc/buildkit/ and file /etc/buildkit/buildkitd.toml, input the content below.
+Configure buildkitd: create folder /etc/buildkit/ and file /etc/buildkit/buildkitd.toml, input the content below.
 
 ```bash
 [registry."harbor.cncf.net"]
   http = true
   insecure = true
 ```
-
-  start buildkitd service
+Start buildkitd service
 
 ```bash
 root@master1:~# systemctl daemon-reload
