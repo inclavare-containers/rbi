@@ -1,0 +1,95 @@
+name: in-toto Supply Chain Provenance Demo (kata-agent)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/actions/in-toto-*/**"
+      - ".github/workflows/in-toto-kata-agent-demo.yml"
+      - "in-toto/github-action/**"
+  pull_request:
+    paths:
+      - ".github/actions/in-toto-*/**"
+      - ".github/workflows/in-toto-kata-agent-demo.yml"
+      - "in-toto/github-action/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  intoto-unit-tests:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: python -m pip install -r in-toto/github-action/requirements.txt
+      - name: Run unit tests
+        run: python -m unittest discover -s in-toto/github-action/tests -v
+
+  kata-agent-provenance-demo:
+    name: kata-agent in-toto Pipeline Demo
+    needs: intoto-unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Step 1 - Prepare kata-agent patch manifest (signed linkfile)
+        id: step_prepare
+        uses: ./.github/actions/in-toto-run
+        with:
+          step-name: prepare-patch
+          materials: "kata-agent/patch/Makefile kata-agent/patch/protocols/Cargo.toml"
+          products: "dist/kata-agent-manifest.json"
+          metadata-directory: ".in-toto"
+          signing-key: ${{ secrets.INTOTO_STEP_PREPARE_KEY }}
+          command: >
+            bash -c 'mkdir -p dist &&
+            sha256sum kata-agent/patch/Makefile kata-agent/patch/protocols/Cargo.toml > dist/kata-agent-manifest.json'
+
+      - name: Step 2 - Build & digest kata-agent provenance artifact (signed linkfile)
+        id: step_build
+        uses: ./.github/actions/in-toto-run
+        with:
+          step-name: build-artifact
+          materials: "dist/kata-agent-manifest.json"
+          products: "dist/kata-agent.sha256"
+          metadata-directory: ".in-toto"
+          signing-key: ${{ secrets.INTOTO_STEP_BUILD_KEY }}
+          command: >
+            bash -c 'sha256sum dist/kata-agent-manifest.json kata-agent/kata-build-docker.sh > dist/kata-agent.sha256'
+
+      - name: Step 3 - Generate & sign in-toto root.layout
+        id: layout
+        uses: ./.github/actions/in-toto-layout
+        with:
+          spec: in-toto/github-action/examples/kata-agent-layout.json
+          output: .in-toto/root.layout
+          signing-key: ${{ secrets.INTOTO_OWNER_KEY }}
+          step-keys: |
+            prepare-patch=${{ steps.step_prepare.outputs.public-key-path }}
+            build-artifact=${{ steps.step_build.outputs.public-key-path }}
+
+      - name: Step 4 - Verify full supply-chain provenance
+        uses: ./.github/actions/in-toto-verify
+        with:
+          layout: ${{ steps.layout.outputs.layout-file }}
+          layout-key-path: ${{ steps.layout.outputs.owner-public-key-path }}
+          link-dir: ".in-toto"
+
+      - name: Upload signed provenance metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: kata-agent-in-toto-provenance
+          path: |
+            .in-toto/root.layout
+            .in-toto/*.link
+            .in-toto/**/*.pub

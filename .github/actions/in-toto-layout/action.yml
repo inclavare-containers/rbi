@@ -1,0 +1,73 @@
+name: "in-toto Layout Generator"
+description: "Generate and sign an in-toto root.layout from a JSON specification and functionary public keys."
+inputs:
+  spec:
+    description: "Path to the layout specification JSON file."
+    required: true
+  output:
+    description: "Output path for the signed root.layout file."
+    required: false
+    default: ".in-toto/root.layout"
+  step-keys:
+    description: "Newline-separated step=public_key_json_path mappings to bind functionary keys into the layout."
+    required: false
+    default: ""
+  expires-days:
+    description: "Layout validity window in days from generation time."
+    required: false
+    default: "30"
+  signing-key:
+    description: "PEM-encoded owner private key content (typically passed via GitHub Secrets)."
+    required: false
+    default: ""
+  signing-key-path:
+    description: "Path to PEM owner private key file."
+    required: false
+    default: ""
+  key-type:
+    description: "Key algorithm when generating an ephemeral owner keypair (ed25519|rsa|ecdsa)."
+    required: false
+    default: "ed25519"
+outputs:
+  layout-file:
+    description: "Path to the signed root.layout file."
+    value: ${{ steps.layout.outputs.layout-file }}
+  owner-keyid:
+    description: "Key ID of the layout owner key."
+    value: ${{ steps.layout.outputs.owner-keyid }}
+  owner-public-key-path:
+    description: "Path to the layout owner public key JSON file."
+    value: ${{ steps.layout.outputs.owner-public-key-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install in-toto dependencies
+      shell: bash
+      run: |
+        python3 -m pip install --quiet -r "${{ github.action_path }}/../../../in-toto/github-action/requirements.txt"
+
+    - name: Generate and sign in-toto root.layout
+      id: layout
+      shell: bash
+      env:
+        INTOTO_OWNER_SIGNING_KEY: ${{ inputs.signing-key }}
+        INTOTO_STEP_KEYS: ${{ inputs.step-keys }}
+      run: |
+        ARGS=(
+          --spec "${{ inputs.spec }}"
+          --output "${{ inputs.output }}"
+          --expires-days "${{ inputs.expires-days }}"
+          --key-type "${{ inputs.key-type }}"
+        )
+        if [ -n "${{ inputs.signing-key-path }}" ]; then
+          ARGS+=(--key-path "${{ inputs.signing-key-path }}")
+        elif [ -n "${INTOTO_OWNER_SIGNING_KEY}" ]; then
+          ARGS+=(--key-env "INTOTO_OWNER_SIGNING_KEY")
+        fi
+        if [ -n "${INTOTO_STEP_KEYS}" ]; then
+          while IFS= read -r line; do
+            [ -n "$line" ] && ARGS+=(--step-key "$line")
+          done <<< "${INTOTO_STEP_KEYS}"
+        fi
+        python3 "${{ github.action_path }}/../../../in-toto/github-action/intoto_ci.py" layout "${ARGS[@]}"

@@ -1,0 +1,118 @@
+name: "in-toto Run Step"
+description: "Execute a CI/CD step command inside in-toto-run, record materials/products, and issue a signed .link provenance file."
+inputs:
+  step-name:
+    description: "Name of the supply-chain step defined in the in-toto layout."
+    required: true
+  command:
+    description: "Command line to execute and attest under in-toto-run."
+    required: true
+  materials:
+    description: "Space/newline-separated list of material file paths or globs."
+    required: false
+    default: ""
+  products:
+    description: "Space/newline-separated list of product file paths or globs."
+    required: false
+    default: ""
+  exclude-patterns:
+    description: "Space/newline-separated glob patterns to exclude from hashing."
+    required: false
+    default: ""
+  base-path:
+    description: "Optional base path for artifact hashing."
+    required: false
+    default: ""
+  working-directory:
+    description: "Working directory in which to execute the step command."
+    required: false
+    default: "."
+  metadata-directory:
+    description: "Directory where generated .link metadata and ephemeral public keys are stored."
+    required: false
+    default: ".in-toto"
+  signing-key:
+    description: "PEM-encoded private key content (typically passed via GitHub Secrets). If omitted and signing-key-path is empty, an ephemeral CI keypair is generated."
+    required: false
+    default: ""
+  signing-key-path:
+    description: "Path to PEM private key file."
+    required: false
+    default: ""
+  key-type:
+    description: "Key algorithm when generating an ephemeral keypair (ed25519|rsa|ecdsa)."
+    required: false
+    default: "ed25519"
+  record-streams:
+    description: "Whether to record stdout/stderr in the link metadata (true|false)."
+    required: false
+    default: "true"
+  record-environment:
+    description: "Whether to record environment variables in the link metadata (true|false)."
+    required: false
+    default: "false"
+  timeout:
+    description: "Step execution timeout in seconds."
+    required: false
+    default: "600"
+outputs:
+  link-file:
+    description: "Path to the generated signed .link metadata file."
+    value: ${{ steps.run.outputs.link-file }}
+  keyid:
+    description: "Key ID of the functionary key used to sign the linkfile."
+    value: ${{ steps.run.outputs.keyid }}
+  public-key-path:
+    description: "Path to the functionary public key JSON file."
+    value: ${{ steps.run.outputs.public-key-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install in-toto dependencies
+      shell: bash
+      run: |
+        python3 -m pip install --quiet -r "${{ github.action_path }}/../../../in-toto/github-action/requirements.txt"
+
+    - name: Execute step under in-toto-run
+      id: run
+      shell: bash
+      env:
+        INTOTO_STEP_SIGNING_KEY: ${{ inputs.signing-key }}
+        INTOTO_INPUT_COMMAND: ${{ inputs.command }}
+        INTOTO_INPUT_MATERIALS: ${{ inputs.materials }}
+        INTOTO_INPUT_PRODUCTS: ${{ inputs.products }}
+        INTOTO_INPUT_EXCLUDES: ${{ inputs.exclude-patterns }}
+      run: |
+        ARGS=(
+          --step-name "${{ inputs.step-name }}"
+          --working-dir "${{ inputs.working-directory }}"
+          --metadata-dir "${{ inputs.metadata-directory }}"
+          --key-type "${{ inputs.key-type }}"
+          --timeout "${{ inputs.timeout }}"
+          --command-str "${INTOTO_INPUT_COMMAND}"
+        )
+        if [ -n "${{ inputs.base-path }}" ]; then
+          ARGS+=(--base-path "${{ inputs.base-path }}")
+        fi
+        if [ -n "${{ inputs.signing-key-path }}" ]; then
+          ARGS+=(--key-path "${{ inputs.signing-key-path }}")
+        elif [ -n "${INTOTO_STEP_SIGNING_KEY}" ]; then
+          ARGS+=(--key-env "INTOTO_STEP_SIGNING_KEY")
+        fi
+        if [ -n "${INTOTO_INPUT_MATERIALS}" ]; then
+          ARGS+=(--materials "${INTOTO_INPUT_MATERIALS}")
+        fi
+        if [ -n "${INTOTO_INPUT_PRODUCTS}" ]; then
+          ARGS+=(--products "${INTOTO_INPUT_PRODUCTS}")
+        fi
+        if [ -n "${INTOTO_INPUT_EXCLUDES}" ]; then
+          ARGS+=(--exclude-patterns "${INTOTO_INPUT_EXCLUDES}")
+        fi
+        if [ "${{ inputs.record-streams }}" = "false" ]; then
+          ARGS+=(--no-record-streams)
+        fi
+        if [ "${{ inputs.record-environment }}" = "true" ]; then
+          ARGS+=(--record-environment)
+        fi
+        python3 "${{ github.action_path }}/../../../in-toto/github-action/intoto_ci.py" run "${ARGS[@]}"

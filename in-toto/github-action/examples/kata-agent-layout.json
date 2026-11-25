@@ -1,0 +1,33 @@
+{
+  "expires_days": 30,
+  "readme": "Supply-chain layout for kata-agent reproducible build CI demo",
+  "steps": [
+    {
+      "name": "prepare-patch",
+      "expected_materials": [
+        ["ALLOW", "kata-agent/patch/*"],
+        ["ALLOW", "kata-agent/patch/**/*"]
+      ],
+      "expected_products": [
+        ["CREATE", "dist/kata-agent-manifest.json"],
+        ["ALLOW", "*"]
+      ],
+      "expected_command": [],
+      "threshold": 1
+    },
+    {
+      "name": "build-artifact",
+      "expected_materials": [
+        ["MATCH", "dist/kata-agent-manifest.json", "WITH", "PRODUCTS", "FROM", "prepare-patch"],
+        ["ALLOW", "*"]
+      ],
+      "expected_products": [
+        ["CREATE", "dist/kata-agent.sha256"],
+        ["ALLOW", "*"]
+      ],
+      "expected_command": [],
+      "threshold": 1
+    }
+  ],
+  "inspect": []
+}

@@ -1,0 +1,39 @@
+name: "in-toto Verify"
+description: "Verify an in-toto root.layout and collected .link metadata files against trusted layout owner public keys."
+inputs:
+  layout:
+    description: "Path to the signed root.layout file."
+    required: false
+    default: ".in-toto/root.layout"
+  layout-key-path:
+    description: "Path to the trusted layout owner public key JSON file."
+    required: true
+  link-dir:
+    description: "Directory containing signed .link files."
+    required: false
+    default: ".in-toto"
+  step-name:
+    description: "Optional single step name to verify."
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install in-toto dependencies
+      shell: bash
+      run: |
+        python3 -m pip install --quiet -r "${{ github.action_path }}/../../../in-toto/github-action/requirements.txt"
+
+    - name: Verify in-toto supply chain provenance
+      shell: bash
+      run: |
+        ARGS=(
+          --layout "${{ inputs.layout }}"
+          --layout-key "${{ inputs.layout-key-path }}"
+          --link-dir "${{ inputs.link-dir }}"
+        )
+        if [ -n "${{ inputs.step-name }}" ]; then
+          ARGS+=(--step-name "${{ inputs.step-name }}")
+        fi
+        python3 "${{ github.action_path }}/../../../in-toto/github-action/intoto_ci.py" verify "${ARGS[@]}"
